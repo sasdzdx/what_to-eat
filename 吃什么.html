@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>纠结拯救者 · 今天吃什么</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Noto Sans SC', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 浮动食物表情背景 */
+        .floating-food {
+            position: fixed;
+            font-size: 2rem;
+            opacity: 0.08;
+            pointer-events: none;
+            animation: float 15s infinite ease-in-out;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            33% { transform: translateY(-30px) rotate(10deg); }
+            66% { transform: translateY(15px) rotate(-5deg); }
+        }
+
+        /* 卡片动画 */
+        .result-card {
+            animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* 按钮按压效果 */
+        .btn-press {
+            transition: all 0.15s ease;
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        /* 摇晃动画（换一个时） */
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(5px); }
+        }
+
+        /* 脉冲光环 */
+        .pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        /* 场景标签颜色 */
+        .scene-canteen { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .scene-delivery { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .scene-dorm { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+        /* 玻璃拟态 */
+        .glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 排除标签 */
+        .exclusion-tag {
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+        }
+
+        /* 加载旋转 */
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-white relative">
+    <!-- 浮动背景表情 -->
+    <div id="floatingBg"></div>
+
+    <!-- 主容器 -->
+    <div class="relative z-10 max-w-md mx-auto px-4 py-6 min-h-screen flex flex-col">
+        
+        <!-- 标题区 -->
+        <header class="text-center mb-6">
+            <div class="inline-block glass rounded-2xl px-6 py-3 mb-3">
+                <h1 class="text-2xl font-black tracking-wide">🍽️ 纠结拯救者</h1>
+                <p class="text-sm text-white/70 mt-1">今天吃什么 · 一键拯救选择困难症</p>
+            </div>
+        </header>
+
+        <!-- 主按钮区 -->
+        <div class="flex gap-3 mb-6">
+            <button id="btnEat" class="btn-press flex-1 bg-white text-purple-700 font-bold text-lg py-4 rounded-2xl shadow-lg shadow-purple-900/20 flex items-center justify-center gap-2 pulse-ring">
+                <span class="text-2xl">🎲</span>
+                <span>吃什么</span>
+            </button>
+            <button id="btnChange" class="btn-press w-20 bg-white/20 text-white font-bold py-4 rounded-2xl border border-white/30 flex items-center justify-center">
+                <span class="text-xl">🔄</span>
+            </button>
+        </div>
+
+        <!-- 结果展示区 -->
+        <div id="resultArea" class="hidden mb-6">
+            <div id="resultCard" class="result-card glass rounded-3xl p-6 shadow-2xl">
+                <!-- 场景标签 -->
+                <div id="sceneBadge" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-white mb-4 shadow-lg">
+                    🏫 食堂党
+                </div>
+                
+                <!-- 食物名称 -->
+                <h2 id="foodName" class="text-3xl font-black mb-3 text-white drop-shadow-lg">
+                    麻辣烫
+                </h2>
+                
+                <!-- 理由 -->
+                <div class="bg-white/10 rounded-xl p-4 mb-4">
+                    <p class="text-sm text-white/80 mb-1">💡 推荐理由</p>
+                    <p id="foodReason" class="text-base font-medium leading-relaxed">
+                        食堂阿姨今天手不抖，肉给得超多！
+                    </p>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="app.excludeCurrent()" class="btn-press flex-1 bg-white/20 hover:bg-white/30 text-white text-sm font-medium py-2.5 rounded-xl border border-white/20 transition-colors">
+                        🚫 不要这个
+                    </button>
+                    <button onclick="app.shareResult()" class="btn-press flex-1 bg-white/20 hover:bg-white/30 text-white text-sm font-medium py-2.5 rounded-xl border border-white/20 transition-colors">
+                        📤 分享
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷排除区 -->
+        <div class="glass rounded-2xl p-4 mb-4">
+            <p class="text-sm text-white/70 mb-3 font-medium">⚡ 快捷排除</p>
+            <div class="flex gap-2 flex-wrap" id="quickExclusions">
+                <button onclick="app.excludeByKeyword('辣')" class="btn-press px-3 py-1.5 bg-red-500/30 hover:bg-red-500/50 text-white text-xs rounded-lg border border-red-400/30 transition-colors">
+                    🌶️ 不要辣
+                </button>
+                <button onclick="app.excludeByKeyword('猪肉')" class="btn-press px-3 py-1.5 bg-orange-500/30 hover:bg-orange-500/50 text-white text-xs rounded-lg border border-orange-400/30 transition-colors">
+                    🥩 不要猪肉
+                </button>
+                <button onclick="app.excludeByKeyword('鸡')" class="btn-press px-3 py-1.5 bg-yellow-500/30 hover:bg-yellow-500/50 text-white text-xs rounded-lg border border-yellow-400/30 transition-colors">
+                    🍗 不要鸡
+                </button>
+                <button onclick="app.excludeByKeyword('面')" class="btn-press px-3 py-1.5 bg-blue-500/30 hover:bg-blue-500/50 text-white text-xs rounded-lg border border-blue-400/30 transition-colors">
+                    🍜 不要面
+                </button>
+                <button onclick="app.excludeScene('外卖')" class="btn-press px-3 py-1.5 bg-purple-500/30 hover:bg-purple-500/50 text-white text-xs rounded-lg border border-purple-400/30 transition-colors">
+                    🍱 不要外卖
+                </button>
+                <button onclick="app.excludeScene('食堂')" class="btn-press px-3 py-1.5 bg-pink-500/30 hover:bg-pink-500/50 text-white text-xs rounded-lg border border-pink-400/30 transition-colors">
+                    🏫 不要食堂
+                </button>
+            </div>
+        </div>
+
+        <!-- 已排除列表 -->
+        <div id="exclusionsArea" class="hidden glass rounded-2xl p-4 mb-4">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-sm text-white/70 font-medium">🚫 已排除</p>
+                <button onclick="app.clearExclusions()" class="text-xs text-white/50 hover:text-white/80 transition-colors">
+                    清空
+                </button>
+            </div>
+            <div id="exclusionsList" class="flex gap-2 flex-wrap"></div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="glass rounded-2xl p-4 mb-4 flex-1">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-sm text-white/70 font-medium">📜 今日推荐记录</p>
+                <button onclick="app.clearHistory()" class="text-xs text-white/50 hover:text-white/80 transition-colors">
+                    清空
+                </button>
+            </div>
+            <div id="historyList" class="space-y-2 max-h-48 overflow-y-auto">
+                <p class="text-sm text-white/40 text-center py-4">还没有推荐记录，点击上方按钮开始吧！</p>
+            </div>
+        </div>
+
+        <!-- 底部信息 -->
+        <footer class="text-center text-xs text-white/40 py-2">
+            <p>双击保存为 HTML 文件 · 无需联网也能用</p>
+        </footer>
+    </div>
+
+    <!-- 提示弹窗 -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-medium opacity-0 pointer-events-none transition-all duration-300 z-50">
+        提示信息
+    </div>
+
+    <script>
+        // ============ 数据配置 ============
+        const FOOD_DATABASE = {
+            "食堂党": {
+                emoji: "🏫",
+                class: "scene-canteen",
+                items: [
+                    "麻辣烫", "鸡腿饭", "牛肉面", "炒河粉", "黄焖鸡米饭",
+                    "酸菜鱼", "宫保鸡丁盖饭", "番茄鸡蛋面", "烤肉拌饭", "砂锅米线",
+                    "卤肉饭", "炸酱面", "糖醋里脊饭", "重庆小面", "饺子",
+                    "铁板炒饭", "土豆牛肉盖浇面", "凉皮", "肉夹馍", "馄饨"
+                ],
+                reasons: [
+                    "食堂阿姨今天手不抖，肉给得超多！",
+                    "刚出锅的热乎饭，去晚了可就没了！",
+                    "今天食堂这个窗口排队的人最多，跟着大部队走准没错！",
+                    "听说今天换厨师了，味道升级！",
+                    "便宜大碗，省下的钱还能买杯奶茶！",
+                    "食堂空调开得很足，吃饭不流汗！",
+                    "今天有免费汤，不喝白不喝！",
+                    "室友上周吃了说好吃，今天终于轮到你！"
+                ]
+            },
+            "外卖人": {
+                emoji: "🍱",
+                class: "scene-delivery",
+                items: [
+                    "炸鸡汉堡", "披萨", "寿司", "螺蛳粉", "麻辣香锅",
+                    "韩式炸鸡", "日式拉面", "泰式咖喱饭", "轻食沙拉", "煲仔饭",
+                    "小龙虾", "烤鱼", "冒菜", "煎饼果子", "肉蟹煲",
+                    "芝士焗饭", "越南河粉", "印度飞饼", "土耳其烤肉", "墨西哥卷饼"
+                ],
+                reasons: [
+                    "外卖红包快过期了，不用就浪费了！",
+                    "今天满减力度超大，四舍五入等于不要钱！",
+                    "配送员正好在附近，预计15分钟送达！",
+                    "这家店评分4.9，闭着眼睛点都好吃！",
+                    "下雨天/大热天/大冷天，出门是不可能出门的！",
+                    "新用户首单立减，换个手机号又能薅一波！",
+                    "老板今天心情好，备注多要酱真的给了！",
+                    "追剧配外卖，双倍快乐！"
+                ]
+            },
+            "宿舍躺": {
+                emoji: "🍞",
+                class: "scene-dorm",
+                items: [
+                    "泡面+火腿肠", "面包+牛奶", "自热火锅", "自热米饭", "速食粥",
+                    "坚果+酸奶", "饼干+豆奶", "速冻水饺", "速食意面", "罐头粥",
+                    "燕麦片", "即食鸡胸肉", "水果拼盘", "薯片+可乐", "三明治",
+                    "能量棒", "果冻+奶茶", "卤蛋+八宝粥", "速食酸辣粉", "小蛋糕"
+                ],
+                reasons: [
+                    "出门？不存在的，床以外的地方都是远方！",
+                    "今天步数已经够了，不能再走了！",
+                    "宿舍WiFi信号满格，谁还出门啊！",
+                    "穿睡衣吃饭才是最高礼仪！",
+                    "今天太阳太大/风太大/空气太新鲜，不适合出门！",
+                    "这包泡面再不吃就过期了，拯救食物人人有责！",
+                    "躺着吃，坐着吃，站着吃，怎么吃都香！",
+                    "外卖还要等，这个马上就能吃！"
+                ]
+            }
+        };
+
+        const ALLERGEN_MAP = {
+            "辣": ["麻辣烫", "麻辣香锅", "螺蛳粉", "冒菜", "重庆小面", "酸辣粉", "小龙虾", "烤鱼", "速食酸辣粉"],
+            "猪肉": ["卤肉饭", "炸酱面", "糖醋里脊饭", "肉夹馍", "饺子", "肉蟹煲", "韩式炸鸡", "泡面+火腿肠"],
+            "鸡": ["鸡腿饭", "黄焖鸡米饭", "宫保鸡丁盖饭", "烤肉拌饭", "韩式炸鸡", "即食鸡胸肉", "卤蛋", "卤蛋+八宝粥"],
+            "鱼": ["酸菜鱼", "烤鱼", "肉蟹煲"],
+            "牛肉": ["牛肉面", "土豆牛肉盖浇面"],
+            "面": ["牛肉面", "炒河粉", "番茄鸡蛋面", "重庆小面", "炸酱面", "砂锅米线", "土豆牛肉盖浇面", "凉皮", "馄饨", "日式拉面", "越南河粉", "速食意面", "酸辣粉", "速食酸辣粉"],
+            "米饭": ["鸡腿饭", "黄焖鸡米饭", "宫保鸡丁盖饭", "烤肉拌饭", "卤肉饭", "糖醋里脊饭", "铁板炒饭", "煲仔饭", "泰式咖喱饭", "芝士焗饭", "自热米饭"],
+            "油炸": ["炸鸡汉堡", "韩式炸鸡", "炸酱面", "糖醋里脊饭", "铁板炒饭", "煎饼果子", "印度飞饼", "薯片", "小蛋糕", "薯片+可乐"]
+        };
+
+        // ============ 状态管理 ============
+        class FoodRecommender {
+            constructor() {
+                this.state = this.loadState();
+                this.today = new Date().toISOString().split('T')[0];
+                this.ensureTodayRecord();
+                this.currentRecommendation = null;
+            }
+
+            loadState() {
+                try {
+                    const saved = localStorage.getItem('whatToEatState');
+                    if (saved) return JSON.parse(saved);
+                } catch (e) {}
+                return {
+                    history: {},
+                    exclusions: []
+                };
+            }
+
+            saveState() {
+                try {
+                    localStorage.setItem('whatToEatState', JSON.stringify(this.state));
+                } catch (e) {}
+            }
+
+            ensureTodayRecord() {
+                if (!this.state.history[this.today]) {
+                    this.state.history[this.today] = [];
+                }
+            }
+
+            getYesterdayFood() {
+                const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                const records = this.state.history[yesterday];
+                if (records && records.length > 0) {
+                    return records[records.length - 1].food;
+                }
+                return "";
+            }
+
+            addExclusion(food) {
+                if (!this.state.exclusions.includes(food)) {
+                    this.state.exclusions.push(food);
+                    this.saveState();
+                    return true;
+                }
+                return false;
+            }
+
+            addSceneExclusion(scene) {
+                const sceneKey = scene.replace(/党|人|躺/g, '');
+                for (const key of Object.keys(FOOD_DATABASE)) {
+                    if (key.includes(sceneKey)) {
+                        FOOD_DATABASE[key].items.forEach(food => this.addExclusion(food));
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            recordRecommendation(scene, food) {
+                this.state.history[this.today].push({ scene, food, time: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}) });
+                this.saveState();
+            }
+
+            getAvailableFoods(scene) {
+                const allFoods = FOOD_DATABASE[scene].items;
+                const exclusions = new Set(this.state.exclusions);
+                const yesterdayFood = this.getYesterdayFood();
+                const todayFoods = new Set(this.state.history[this.today].map(r => r.food));
+
+                let available = allFoods.filter(food => {
+                    if (exclusions.has(food)) return false;
+                    if (todayFoods.has(food)) return false;
+                    if (food === yesterdayFood) return false;
+                    return true;
+                });
+
+                if (available.length === 0) {
+                    available = allFoods.filter(f => !exclusions.has(f));
+                }
+                if (available.length === 0) {
+                    available = [...allFoods];
+                }
+
+                return available;
+            }
+
+            recommend(isChange = false) {
+                const scenes = Object.keys(FOOD_DATABASE);
+                let scene = scenes[Math.floor(Math.random() * scenes.length)];
+
+                let available = this.getAvailableFoods(scene);
+                if (available.length === 0) {
+                    for (const s of scenes) {
+                        if (s !== scene) {
+                            available = this.getAvailableFoods(s);
+                            if (available.length > 0) {
+                                scene = s;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (available.length === 0) {
+                    return null;
+                }
+
+                const food = available[Math.floor(Math.random() * available.length)];
+                const reasons = FOOD_DATABASE[scene].reasons;
+                const reason = reasons[Math.floor(Math.random() * reasons.length)];
+
+                this.currentRecommendation = { scene, food, reason };
+                this.recordRecommendation(scene, food);
+                return this.currentRecommendation;
+            }
+
+            excludeCurrent() {
+                if (this.currentRecommendation) {
+                    return this.addExclusion(this.currentRecommendation.food);
+                }
+                return false;
+            }
+
+            reset() {
+                this.state = { history: {}, exclusions: [] };
+                this.saveState();
+                this.ensureTodayRecord();
+                this.currentRecommendation = null;
+            }
+
+            getTodayHistory() {
+                return this.state.history[this.today] || [];
+            }
+
+            getExclusions() {
+                return this.state.exclusions;
+            }
+
+            clearExclusions() {
+                this.state.exclusions = [];
+                this.saveState();
+            }
+
+            clearHistory() {
+                this.state.history = {};
+                this.saveState();
+                this.ensureTodayRecord();
+            }
+        }
+
+        // ============ UI 控制器 ============
+        class App {
+            constructor() {
+                this.recommender = new FoodRecommender();
+                this.initElements();
+                this.initEvents();
+                this.initFloatingBg();
+                this.renderHistory();
+                this.renderExclusions();
+            }
+
+            initElements() {
+                this.btnEat = document.getElementById('btnEat');
+                this.btnChange = document.getElementById('btnChange');
+                this.resultArea = document.getElementById('resultArea');
+                this.resultCard = document.getElementById('resultCard');
+                this.sceneBadge = document.getElementById('sceneBadge');
+                this.foodName = document.getElementById('foodName');
+                this.foodReason = document.getElementById('foodReason');
+                this.historyList = document.getElementById('historyList');
+                this.exclusionsArea = document.getElementById('exclusionsArea');
+                this.exclusionsList = document.getElementById('exclusionsList');
+                this.toast = document.getElementById('toast');
+            }
+
+            initEvents() {
+                this.btnEat.addEventListener('click', () => this.handleRecommend(false));
+                this.btnChange.addEventListener('click', () => this.handleRecommend(true));
+            }
+
+            initFloatingBg() {
+                const container = document.getElementById('floatingBg');
+                const emojis = ['🍜', '🍱', '🍞', '🍕', '🍗', '🍖', '🥟', '🍔', '🌮', '🍣', '🥗', '🍛'];
+                for (let i = 0; i < 15; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'floating-food';
+                    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    el.style.left = Math.random() * 100 + '%';
+                    el.style.top = Math.random() * 100 + '%';
+                    el.style.animationDelay = Math.random() * 15 + 's';
+                    el.style.animationDuration = (10 + Math.random() * 10) + 's';
+                    container.appendChild(el);
+                }
+            }
+
+            handleRecommend(isChange) {
+                const result = this.recommender.recommend(isChange);
+                if (!result) {
+                    this.showToast('所有食物都被排除了，点击"清空"重置吧！');
+                    return;
+                }
+
+                this.renderResult(result);
+                this.renderHistory();
+                
+                if (isChange) {
+                    this.resultCard.classList.add('shake');
+                    setTimeout(() => this.resultCard.classList.remove('shake'), 500);
+                }
+            }
+
+            renderResult(result) {
+                const sceneData = FOOD_DATABASE[result.scene];
+                
+                this.sceneBadge.className = `inline-block px-4 py-1.5 rounded-full text-sm font-bold text-white mb-4 shadow-lg ${sceneData.class}`;
+                this.sceneBadge.textContent = `${sceneData.emoji} ${result.scene}`;
+                this.foodName.textContent = result.food;
+                this.foodReason.textContent = result.reason;
+
+                this.resultArea.classList.remove('hidden');
+                
+                // 滚动到结果
+                setTimeout(() => {
+                    this.resultArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+            }
+
+            renderHistory() {
+                const history = this.recommender.getTodayHistory();
+                if (history.length === 0) {
+                    this.historyList.innerHTML = '<p class="text-sm text-white/40 text-center py-4">还没有推荐记录，点击上方按钮开始吧！</p>';
+                    return;
+                }
+
+                this.historyList.innerHTML = history.map((record, index) => {
+                    const sceneData = FOOD_DATABASE[record.scene];
+                    const isLast = index === history.length - 1;
+                    return `
+                        <div class="flex items-center gap-3 ${isLast ? 'bg-white/10' : ''} rounded-xl px-3 py-2.5 transition-colors">
+                            <span class="text-lg">${sceneData.emoji}</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium truncate">${record.food}</p>
+                                <p class="text-xs text-white/50">${record.scene}</p>
+                            </div>
+                            <span class="text-xs text-white/40">${record.time}</span>
+                        </div>
+                    `;
+                }).reverse().join('');
+            }
+
+            renderExclusions() {
+                const exclusions = this.recommender.getExclusions();
+                if (exclusions.length === 0) {
+                    this.exclusionsArea.classList.add('hidden');
+                    return;
+                }
+
+                this.exclusionsArea.classList.remove('hidden');
+                this.exclusionsList.innerHTML = exclusions.map(item => `
+                    <span class="exclusion-tag inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 rounded-lg text-xs text-white/80">
+                        ${item}
+                        <button onclick="app.removeExclusion('${item}')" class="hover:text-white ml-0.5">✕</button>
+                    </span>
+                `).join('');
+            }
+
+            excludeCurrent() {
+                if (this.recommender.excludeCurrent()) {
+                    this.showToast('已排除，下次不会推荐这个了！');
+                    this.renderExclusions();
+                    // 自动换一个新的
+                    setTimeout(() => this.handleRecommend(true), 500);
+                }
+            }
+
+            excludeByKeyword(keyword) {
+                const foods = ALLERGEN_MAP[keyword];
+                if (foods) {
+                    foods.forEach(food => this.recommender.addExclusion(food));
+                    this.showToast(`已排除所有带「${keyword}」的食物！`);
+                    this.renderExclusions();
+                }
+            }
+
+            excludeScene(scene) {
+                this.recommender.addSceneExclusion(scene);
+                this.showToast(`已排除「${scene}」场景的所有食物！`);
+                this.renderExclusions();
+            }
+
+            removeExclusion(item) {
+                const idx = this.recommender.state.exclusions.indexOf(item);
+                if (idx > -1) {
+                    this.recommender.state.exclusions.splice(idx, 1);
+                    this.recommender.saveState();
+                    this.renderExclusions();
+                    this.showToast(`已恢复「${item}」`);
+                }
+            }
+
+            clearExclusions() {
+                this.recommender.clearExclusions();
+                this.renderExclusions();
+                this.showToast('已清空所有排除设置！');
+            }
+
+            clearHistory() {
+                this.recommender.clearHistory();
+                this.renderHistory();
+                this.resultArea.classList.add('hidden');
+                this.showToast('已清空今日记录！');
+            }
+
+            shareResult() {
+                const rec = this.recommender.currentRecommendation;
+                if (!rec) return;
+                
+                const text = `🍽️ 纠结拯救者推荐：${rec.food}\n🏷️ ${rec.scene}\n💡 ${rec.reason}`;
+                
+                if (navigator.share) {
+                    navigator.share({ title: '今天吃什么', text });
+                } else {
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.showToast('已复制到剪贴板！');
+                    });
+                }
+            }
+
+            showToast(message) {
+                this.toast.textContent = message;
+                this.toast.style.opacity = '1';
+                this.toast.style.transform = 'translateX(-50%) translateY(0)';
+                
+                setTimeout(() => {
+                    this.toast.style.opacity = '0';
+                    this.toast.style.transform = 'translateX(-50%) translateY(-10px)';
+                }, 2500);
+            }
+        }
+
+        // 启动
+        const app = new App();
+    </script>
+</body>
+</html>
